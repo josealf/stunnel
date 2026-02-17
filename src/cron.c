@@ -220,7 +220,9 @@ NOEXPORT void per_minute_stapling_update(void) {
 
     /* update stapling caches and release the references */
     while(num--) {
-        ocsp_stapling(srv[num]);
+        if(SSL_CTX_get0_certificate(srv[num]->ctx)) {
+            ocsp_stapling(srv[num]);
+        }
         service_free(srv[num]);
     }
     str_free(srv);
@@ -287,18 +289,18 @@ NOEXPORT void per_day_dh_param(void) {
     /* generate 2048-bit DH parameters */
     dh=DH_new();
     if(!dh) {
-        sslerror("DH_new");
+        ssl_error(NULL, "DH_new");
         return;
     }
     if(!DH_generate_parameters_ex(dh, 2048, 2, bn_gencb)) {
         DH_free(dh);
-        sslerror("DH_generate_parameters_ex");
+        ssl_error(NULL, "DH_generate_parameters_ex");
         return;
     }
 #else /* OpenSSL older than 0.9.8 */
     dh=DH_generate_parameters(2048, 2, dh_callback, NULL);
     if(!dh) {
-        sslerror("DH_generate_parameters");
+        ssl_error(NULL, "DH_generate_parameters");
         return;
     }
 #endif /* OpenSSL 0.9.8 or later */
@@ -326,7 +328,7 @@ NOEXPORT BN_GENCB *per_day_bn_gencb(void) {
 
     bn_gencb=BN_GENCB_new();
     if(!bn_gencb) {
-        sslerror("BN_GENCB_new");
+        ssl_error(NULL, "BN_GENCB_new");
         return NULL;
     }
     BN_GENCB_set(bn_gencb, bn_callback, NULL);

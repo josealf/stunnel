@@ -670,7 +670,7 @@ PSK_KEYS *psk_find(const PSK_TABLE *, const char *);
 UI_METHOD *ui_stunnel(void);
 #endif /* !defined(OPENSSL_NO_ENGINE) || OPENSSL_VERSION_NUMBER>=0x10101000L*/
 void print_session_id(const char *, SSL_SESSION *);
-void sslerror(const char *);
+void ssl_error(CLI *, const char *);
 
 /**************************************** prototypes for verify.c */
 

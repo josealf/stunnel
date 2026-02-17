@@ -14,9 +14,11 @@ DISTCLEANFILES = $(doc_DATA)
 
 SUFFIXES = .pod.in .8.in .html.in
 
+BUILD_DATE = $(shell date --utc --date=@$(or $(SOURCE_DATE_EPOCH),$(shell date +%s)) +%Y.%m.%d)
+
 .pod.in.8.in:
 	pod2man -u -n stunnel -s 8 -r $(VERSION) \
-		-c "stunnel TLS Proxy" -d `date +%Y.%m.%d` $< $@
+		-c "stunnel TLS Proxy" -d '$(BUILD_DATE)' $< $@
 
 .pod.in.html.in:
 	pod2html --index --backlink --header \

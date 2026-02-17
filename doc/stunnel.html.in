@@ -634,6 +634,8 @@
 
 <p>ECDH curves separated with &#39;:&#39;</p>
 
+<p>Note: This option is supported for server mode sockets only.</p>
+
 <p>Only a single curve name is allowed for OpenSSL older than 1.1.1.</p>
 
 <p>To get a list of supported curves use:</p>

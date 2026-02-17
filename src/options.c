@@ -5069,7 +5069,7 @@ NOEXPORT const char *engine_open(const char *name) {
     s_log(LOG_DEBUG, "Enabling support for engine \"%s\"", name);
     e=ENGINE_by_id(name);
     if(!e) {
-        sslerror("ENGINE_by_id");
+        ssl_error(NULL, "ENGINE_by_id");
         return "Failed to open the engine";
     }
     engine_initialized=0;
@@ -5107,7 +5107,7 @@ NOEXPORT const char *engine_ctrl(const char *cmd, const char *arg) {
     else
         s_log(LOG_DEBUG, "Executing engine control command %s", cmd);
     if(!ENGINE_ctrl_cmd_string(engines[current_engine], cmd, arg, 0)) {
-        sslerror("ENGINE_ctrl_cmd_string");
+        ssl_error(NULL, "ENGINE_ctrl_cmd_string");
         return "Failed to execute the engine control command";
     }
     return NULL; /* OK */
@@ -5117,7 +5117,7 @@ NOEXPORT const char *engine_default(const char *list) {
     if(current_engine<0)
         return "No engine was defined";
     if(!ENGINE_set_default_string(engines[current_engine], list)) {
-        sslerror("ENGINE_set_default_string");
+        ssl_error(NULL, "ENGINE_set_default_string");
         return "Failed to set engine as default";
     }
     s_log(LOG_INFO, "Engine #%d (%s) set as default for %s",
@@ -5132,7 +5132,7 @@ NOEXPORT const char *engine_init(void) {
         current_engine+1, ENGINE_get_id(engines[current_engine]));
     if(!ENGINE_init(engines[current_engine])) {
         if(ERR_peek_last_error()) /* really an error */
-            sslerror("ENGINE_init");
+            ssl_error(NULL, "ENGINE_init");
         else
             s_log(LOG_ERR, "Engine #%d (%s) not initialized",
                 current_engine+1, ENGINE_get_id(engines[current_engine]));
@@ -5142,7 +5142,7 @@ NOEXPORT const char *engine_init(void) {
     /* it is a bad idea to set the engine as default for all sections */
     /* the "engine=auto" or "engineDefault" options should be used instead */
     if(!ENGINE_set_default(engines[current_engine], ENGINE_METHOD_ALL)) {
-        sslerror("ENGINE_set_default");
+        ssl_error(NULL, "ENGINE_set_default");
         return "Selecting default engine failed";
     }
 #endif

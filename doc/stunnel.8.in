@@ -55,7 +55,7 @@
 .\" ========================================================================
 .\"
 .IX Title "stunnel 8"
-.TH stunnel 8 2025.09.19 5.76 "stunnel TLS Proxy"
+.TH stunnel 8 2025.11.07 5.77 "stunnel TLS Proxy"
 .\" For nroff, turn off justification.  Always turn off hyphenation; it makes
 .\" way too many mistakes in technical documents.
 .if n .ad l
@@ -530,6 +530,8 @@ This file contains multiple CRLs, used with the \fIverifyChain\fR and
 .IP "\fBcurves\fR = list" 4
 .IX Item "curves = list"
 ECDH curves separated with ':'
+.Sp
+Note: This option is supported for server mode sockets only.
 .Sp
 Only a single curve name is allowed for OpenSSL older than 1.1.1.
 .Sp

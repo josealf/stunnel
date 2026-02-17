@@ -828,7 +828,7 @@ void s_ssl_write(CLI *c, const void *buf, int len) {
         } else if(err==SSL_ERROR_WANT_WRITE) {
             s_log(LOG_DEBUG, "s_ssl_write: SSL_ERROR_WANT_WRITE: Retrying");
         } else if(err==SSL_ERROR_SSL) {
-            sslerror("s_ssl_write: SSL_write");
+            ssl_error(c, "s_ssl_write: SSL_write");
             throw_exception(c, 1);
         } else if(err==SSL_ERROR_SYSCALL) {
             if(!socket_needs_retry(c, "s_ssl_write: SSL_write")) {
@@ -893,7 +893,7 @@ size_t s_ssl_read_eof(CLI *c, void *ptr, int len) {
                 break; /* EOF */
             }
 #endif /* SSL_R_UNEXPECTED_EOF_WHILE_READING */
-            sslerror("s_ssl_read_eof: SSL_read");
+            ssl_error(c, "s_ssl_read_eof: SSL_read");
             throw_exception(c, 1);
         } else if(err==SSL_ERROR_SYSCALL) {
             if(!socket_needs_retry(c, "s_ssl_read_eof: SSL_read")) {

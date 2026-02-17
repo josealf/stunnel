@@ -31,7 +31,6 @@ from typing import (
     TypeVar
 )
 from datetime import datetime, timedelta, timezone
-from functools import partial
 from urllib.parse import urlparse
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from cryptography.hazmat.primitives import hashes, serialization
@@ -48,25 +47,12 @@ DEFAULT_CERTS = os.path.join(RESULT_PATH, "certs")
 DEFAULT_LOGS = os.path.join(RESULT_PATH, "logs")
 DEFAULT_LEVEL = logging.INFO
 DEFAULT_PORT = 19254
-OCSP_INDEX=os.path.join(DEFAULT_CERTS, "index.txt")
+OCSP_INDEX = os.path.join(DEFAULT_CERTS, "index.txt")
 
-RE_STUNNEL_VERSION = re.compile(
-    r""" ^
-    stunnel\s+
-    (?P<version> (?: [5-9] | [1-9][0-9]* ) \. \S+ )
-    (?: \s .* )?
-    $ """,
-    re.X
-)
-
-RE_OPENSSL_VERSION = re.compile(
-    r""" ^
-    Compiled\/running\swith\sOpenSSL\s+
-    (?P<version> (?: [0-3]\.[0-9]\.[0-9]* ) \S+)
-    (?: \s .* )?
-    $ """,
-    re.X
-)
+RE_VERSIONS = re.compile(r"""\A
+    (?=.*^stunnel\s+(?P<stunnel_version>(?:[5-9]|[1-9]\d+)\.\d\d\S*)(?:\s.*)?$)?
+    (?=.*^Compiled/running\swith\sOpenSSL\s+(?P<openssl_version>\d+\.\d+\.\d+\S*)(?:\s.*)?$)?
+    .*\Z""", re.X | re.M | re.S)
 
 RE_LINE_IDX = re.compile(r" ^ Hello \s+ (?P<idx> 0 | [1-9][0-9]* ) $ ", re.X)
 
@@ -357,9 +343,9 @@ class TestLogs(PrintLogs):
                 await self.cfg.logsq.put(evt)
                 num = await self.remove_connection(evt, num)
             elif evt.etype == "set_result_event":
-                succeeded += 1 if evt.result=="succeeded" else 0
-                failed += 1 if evt.result=="failed" else 0
-                skipped += 1 if evt.result=="skipped" else 0
+                succeeded += 1 if evt.result == "succeeded" else 0
+                failed += 1 if evt.result == "failed" else 0
+                skipped += 1 if evt.result == "skipped" else 0
                 await self.cfg.logsq.put(evt)
             elif evt.etype == "finish_event":
                 await self.cfg.logsq.put(evt)
@@ -367,33 +353,23 @@ class TestLogs(PrintLogs):
 
 
     async def check_version(self, cmd_str: str, p_err: str) -> None:
-        """Check the version of python, stunnel and openssl"""
+        """Check the version of python, stunnel and OpenSSL"""
         tag = "check_version"
-        lines = p_err.splitlines()
-        if not lines:
-            raise OutputError(f"Expected at least one line of output from `{cmd_str}`")
-        openssl_version = None
-        stunnel_version = None
-        for line in lines:
-            match = RE_STUNNEL_VERSION.match(line)
-            if match:
-                stunnel_version = match.group("version")
-            match = RE_OPENSSL_VERSION.match(line)
-            if match:
-                openssl_version = match.group("version")
-        if not openssl_version:
-            raise UnsupportedVersion("Stunnel was compiled and run with different OpenSSL versions")
-        #TLSv1.1 and TLSv1.2 available only with OpenSSL version 1.0.1 and later
-        if openssl_version < "1.0.1":
-            raise UnsupportedVersion(
-                f"OpenSSL version {openssl_version} is deprecated and not supported")
+
+        # Check Python version first
         if not (sys.version_info.major == 3 and sys.version_info.minor >= 7):
             raise UnsupportedVersion("Python 3.7 or higher is required.\n"
-                + "You are using Python {sys.version_info.major}.{sys.version_info.minor}.")
+                f"You are using Python {sys.version_info.major}.{sys.version_info.minor}.")
+
+        # Parse stunnel output
+        search = RE_VERSIONS.search(p_err)
+
+        # Log and check stunnel version
+        stunnel_version = search.group("stunnel_version")
         if not stunnel_version:
             raise UnsupportedVersion(
                 f"Could not find the version line in the `{cmd_str}` output:\n"
-                + "\n".join(lines)
+                + p_err
             )
         await self.cfg.mainq.put(
             LogEvent(
@@ -402,6 +378,27 @@ class TestLogs(PrintLogs):
                 log=f"[{tag}] Got stunnel version {stunnel_version}"
             )
         )
+
+        # Log and check OpenSSL version
+        openssl_version = search.group("openssl_version")
+        if not openssl_version:
+            raise UnsupportedVersion("Stunnel was compiled and run with different OpenSSL versions")
+            #TLSv1.1 and TLSv1.2 available only with OpenSSL version 1.0.1 and later
+        await self.cfg.mainq.put(
+            LogEvent(
+                etype="log",
+                level=20,
+                log=f"[{tag}] Got OpenSSL version {openssl_version}"
+            )
+        )
+        if 'AUTOPKGTEST_TMP' not in os.environ:
+            match = re.match(r"(\d+)\.(\d+)\.(\d+)", openssl_version)
+            if not match:
+                raise UnsupportedVersion(f"Could not parse OpenSSL version: {openssl_version}")
+            numeric_version = tuple(int(x) for x in match.groups())
+            if numeric_version < (1, 0, 1):
+                raise UnsupportedVersion(
+                    f"OpenSSL version {openssl_version} is deprecated and not supported")
 
     async def get_version(self, logger:logging.Logger) -> str:
         """Obtain the version of stunnel."""
@@ -466,7 +463,7 @@ class TestResult():
 
     def __init__(self, cfg: Config, logger: logging.Logger):
         self.cfg = cfg
-        self.logger=logger
+        self.logger = logger
         self.events = TestEvents(
             skip=[],
             success=[],
@@ -527,7 +524,7 @@ class TestSuite(TestResult):
 
     def __init__(self, cfg: Config, logger: logging.Logger):
         super().__init__(cfg, logger)
-        self.logger=logger
+        self.logger = logger
         self.conns = TestConnections(
             by_id={},
             pending={}
@@ -932,7 +929,7 @@ class TestSuite(TestResult):
                         cafile=str(self.cfg.certdir / "CACert.pem")
                     )
             else:
-                ctx=None
+                ctx = None
 
             protocol = "HTTPS" if self.params.ssl_server else "HTTP"
             await self.cfg.mainq.put(
@@ -1517,8 +1514,8 @@ class ClientInetd(StunnelAcceptConnect):
     def __init__(self, cfg: Config, logger: logging.Logger):
         super().__init__(cfg, logger)
         self.cfg = cfg
-        self.reader=subprocess.DEVNULL
-        self.writer=subprocess.DEVNULL
+        self.reader = subprocess.DEVNULL
+        self.writer = subprocess.DEVNULL
 
 
     async def check_listening_port(self, port:int, service: str) -> int:
@@ -1573,7 +1570,7 @@ class ClientConnectExec(TestSuite):
         super().__init__(cfg, logger)
         self.cfg = cfg
         self.path = path
-        self.idx=0
+        self.idx = 0
 
 
     async def check_listening_port(self, port:int, service: str) -> int:
@@ -1677,7 +1674,7 @@ class ClientConnectExec(TestSuite):
                     task=False
                 )
             )
-            self.idx +=1
+            self.idx += 1
 
 
     async def start_socket_connections(self) -> None:
@@ -1727,7 +1724,7 @@ class OcspResponder():
         """Start OCSP responder"""
         tag = "start_responder"
         try:
-            server=HttpServerThread(self.cfg)
+            server = HttpServerThread(self.cfg)
             await server.start_server()
         except OSError as err:
             await self.cfg.mainq.put(
@@ -1775,12 +1772,10 @@ class OcspResponder():
 class OCSPHandler(SimpleHTTPRequestHandler):
     """Handle the HTTP POST request that arrive at the server"""
 
-    def __init__(self, cfg, database, request, client_address, server):
-        #pylint: disable=too-many-arguments
-        self.cfg=cfg
-        self.database = database
-        self.server=server
-        SimpleHTTPRequestHandler.__init__(self, request, client_address, server)
+    def __init__(self, request, client_address, server):
+        self.cfg = server.cfg
+        self.database = server.database
+        super().__init__(request, client_address, server)
 
 
     def log_message(self, format, *args):
@@ -1794,7 +1789,7 @@ class OCSPHandler(SimpleHTTPRequestHandler):
     def do_POST(self): # pylint: disable=invalid-name
         """"Serves the POST request type"""
         try:
-            url=urlparse(self.path)
+            url = urlparse(self.path)
             if url.path == "/kill_server":
                 self.send_response(200)
                 self.send_header('Content-type', 'text/plain')
@@ -1802,9 +1797,9 @@ class OCSPHandler(SimpleHTTPRequestHandler):
                 self.wfile.write(bytes('Shutting down HTTP server', 'utf-8'))
                 self.server.shutdown()
             elif url.path == "/ocsp":
-                content_length=int(self.headers['Content-Length'])
-                request_data=self.rfile.read(content_length)
-                request=ocsp.load_der_ocsp_request(request_data)
+                content_length = int(self.headers['Content-Length'])
+                request_data = self.rfile.read(content_length)
+                request = ocsp.load_der_ocsp_request(request_data)
                 self.process_ocsp_request(request)
 
         except Exception as err: # pylint: disable=broad-except
@@ -1813,33 +1808,33 @@ class OCSPHandler(SimpleHTTPRequestHandler):
 
     def process_ocsp_request(self, request: ocsp.OCSPRequest):
         """Process OCSP request data"""
-        response=None
-        this_update=datetime.now(timezone.utc)
+        response = None
+        this_update = datetime.now(timezone.utc)
         try:
             issuer = self.database.get(request.issuer_key_hash)
             if issuer is None:
-                response=ocsp.OCSPResponseBuilder.build_unsuccessful(
+                response = ocsp.OCSPResponseBuilder.build_unsuccessful(
                     ocsp.OCSPResponseStatus.UNAUTHORIZED)
             else:
-                serial=request.serial_number
+                serial = request.serial_number
                 subject_cert = issuer.get('certificates').get(serial)
                 if subject_cert is None:
-                    response=ocsp.OCSPResponseBuilder.build_unsuccessful(
+                    response = ocsp.OCSPResponseBuilder.build_unsuccessful(
                         ocsp.OCSPResponseStatus.UNAUTHORIZED)
                 else:
-                    ocsp_cert=issuer.get('ocsp_cert')
-                    cert_info=issuer.get('revocations').get(serial)
-                    revoked=cert_info is not None
+                    ocsp_cert = issuer.get('ocsp_cert')
+                    cert_info = issuer.get('revocations').get(serial)
+                    revoked = cert_info is not None
                     if revoked:
-                        cert_status=ocsp.OCSPCertStatus.REVOKED
+                        cert_status = ocsp.OCSPCertStatus.REVOKED
                     else:
-                        cert_status=ocsp.OCSPCertStatus.GOOD
+                        cert_status = ocsp.OCSPCertStatus.GOOD
 
                     # create a OCSPResponse object
-                    builder=ocsp.OCSPResponseBuilder()
+                    builder = ocsp.OCSPResponseBuilder()
 
                     # add status information about the certificate that was requested
-                    builder=builder.add_response(
+                    builder = builder.add_response(
                         cert=subject_cert,
                         issuer=ocsp_cert,
                         algorithm=request.hash_algorithm,
@@ -1851,7 +1846,7 @@ class OCSPHandler(SimpleHTTPRequestHandler):
 
                     # set the responderID on the OCSP response
                     # encode the X.509 NAME of the certificate or HASH of the public key
-                    builder=builder.responder_id(ocsp.OCSPResponderEncoding.NAME, ocsp_cert)
+                    builder = builder.responder_id(ocsp.OCSPResponderEncoding.NAME, ocsp_cert)
 
                     # add OCSP nonce if present
                     try:
@@ -1861,10 +1856,10 @@ class OCSPHandler(SimpleHTTPRequestHandler):
                         pass
 
                     # create the SUCCESSFUL response that can then be serialized and sent
-                    response=builder.sign(issuer.get('ocsp_key'), hashes.SHA256())
+                    response = builder.sign(issuer.get('ocsp_key'), hashes.SHA256())
 
         except Exception: # pylint: disable=broad-except
-            response=ocsp.OCSPResponseBuilder.build_unsuccessful(
+            response = ocsp.OCSPResponseBuilder.build_unsuccessful(
                 ocsp.OCSPResponseStatus.INTERNAL_ERROR)
 
         self.send_response(200)
@@ -1878,18 +1873,19 @@ class HttpServerThread():
 
     def __init__(self, cfg: Config):
         self.cfg = cfg
-        self.server=None
-        self.server_thread=None
+        self.server = None
+        self.server_thread = None
 
     async def start_server(self) -> (int):
         """Starting HTTP server on localhost and a given port"""
         tag = "start_server"
-        database=self.load_database()
-        ocsp_handler = partial(OCSPHandler, self.cfg, database)
-        self.server=ThreadingHTTPServer(('localhost', self.cfg.port), ocsp_handler)
-        self.server_thread=threading.Thread(target=self.server.serve_forever)
+        database = self.load_database()
+        self.server = ThreadingHTTPServer(("localhost", self.cfg.port), OCSPHandler)
+        self.server.cfg = self.cfg
+        self.server.database = database
+        self.server_thread = threading.Thread(target=self.server.serve_forever)
         self.server_thread.start()
-        hostname, port=self.server.server_address[:2]
+        hostname, port = self.server.server_address[:2]
         await self.cfg.mainq.put(
             LogEvent(
                 etype="log",

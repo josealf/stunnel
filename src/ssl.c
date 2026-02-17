@@ -251,7 +251,7 @@ NOEXPORT int cb_new_auth(void *parent, void *ptr, CRYPTO_EX_DATA *ad,
     (void)argl; /* squash the unused parameter warning */
     (void)argp; /* squash the unused parameter warning */
     if(!CRYPTO_set_ex_data(ad, idx, (void *)(-1)))
-        sslerror("CRYPTO_set_ex_data");
+        ssl_error(NULL, "CRYPTO_set_ex_data");
 #if OPENSSL_VERSION_NUMBER<0x10100000L
     return 1; /* success */
 #endif /* OPENSSL_VERSION_NUMBER<0x10100000L */
@@ -301,7 +301,7 @@ int ssl_configure(GLOBAL_OPTIONS *global) { /* configure global TLS settings */
             EVP_default_properties_is_fips_enabled(NULL))) {
         if(global->option.fips) { /* need to enable */
             if(!fips_available()) {
-                sslerror("FIPS PROVIDER");
+                ssl_error(NULL, "FIPS PROVIDER");
                 return 1;
             }
             if(!EVP_default_properties_enable_fips(NULL, 1)) {
@@ -332,7 +332,7 @@ int ssl_configure(GLOBAL_OPTIONS *global) { /* configure global TLS settings */
 #else
             ERR_load_crypto_strings();
 #endif
-            sslerror("FIPS_mode_set");
+            ssl_error(NULL, "FIPS_mode_set");
             return 1;
         }
     }
@@ -542,7 +542,7 @@ NOEXPORT int add_rand_file(GLOBAL_OPTIONS *global, const char *filename) {
 
     readbytes=RAND_load_file(filename, global->random_bytes);
     if(readbytes<0) {
-        sslerror("RAND_load_file");
+        ssl_error(NULL, "RAND_load_file");
         s_log(LOG_INFO, "Cannot retrieve any random data from %s",
             filename);
         return 0;
@@ -561,7 +561,7 @@ NOEXPORT void update_rand_file(const char *filename) {
 
     writebytes=RAND_write_file(filename);
     if(writebytes<0) {
-        sslerror("RAND_write_file");
+        ssl_error(NULL, "RAND_write_file");
         s_log(LOG_WARNING, "Failed to write strong random data to %s - "
             "may be a permissions or seeding problem", filename);
         return;

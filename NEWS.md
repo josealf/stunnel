@@ -1,6 +1,20 @@
 # stunnel change log
 
 
+### Version 5.77, 2026.02.17, urgency: MEDIUM
+* Security bugfixes
+  - OpenSSL DLLs updated to version 3.5.5.
+* Bugfixes
+  - Avoid attempting to fetch OCSP stapling for PSK-only
+    configuration sections.
+* Features
+  - Merged applicable patches from Fedora and Debian:
+    - Use SOURCE_DATE_EPOCH for reproducible builds.
+    - Skip the OpenSSL version check when AUTOPKGTEST_TMP is set.
+    - Enable PrivateTmp in the stunnel.service template.
+    - Clarify the manual page for the "curves" option.
+  - Log client IP addresses on TLS errors.
+
 ### Version 5.76, 2025.10.18, urgency: MEDIUM
 * Security bugfixes
   - OpenSSL DLLs updated to version 3.5.4.

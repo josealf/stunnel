@@ -55,7 +55,7 @@
 .\" ========================================================================
 .\"
 .IX Title "stunnel 8"
-.TH stunnel 8 2025.09.19 5.76 "stunnel TLS Proxy"
+.TH stunnel 8 2025.11.07 5.77 "stunnel TLS Proxy"
 .\" For nroff, turn off justification.  Always turn off hyphenation; it makes
 .\" way too many mistakes in technical documents.
 .if n .ad l
@@ -534,6 +534,8 @@ przez opcje \fIverifyChain\fR i \fIverifyPeer\fR.
 .IP "\fBcurves\fR = lista" 4
 .IX Item "curves = lista"
 krzywe ECDH odddzielone ':'
+.Sp
+Uwaga: ta opcja wpływa tylko na gniazda w trybie serwera.
 .Sp
 Wersje OpenSSL starsze niż 1.1.1 pozwalają na użycie tylko jednej krzywej.
 .Sp

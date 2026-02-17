@@ -580,6 +580,8 @@ przez opcje I<verifyChain> i I<verifyPeer>.
 
 krzywe ECDH odddzielone ':'
 
+Uwaga: ta opcja wpływa tylko na gniazda w trybie serwera.
+
 Wersje OpenSSL starsze niż 1.1.1 pozwalają na użycie tylko jednej krzywej.
 
 Listę dostępnych krzywych można uzyskać poleceniem:

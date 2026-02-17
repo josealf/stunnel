@@ -93,13 +93,13 @@ NOEXPORT int init_ca(SERVICE_OPTIONS *section) {
     if(section->ca_file || section->ca_dir) {
         if(!SSL_CTX_load_verify_locations(section->ctx,
                 section->ca_file, section->ca_dir)) {
-            sslerror("SSL_CTX_load_verify_locations");
+            ssl_error(NULL, "SSL_CTX_load_verify_locations");
         }
     }
 #if OPENSSL_VERSION_NUMBER>=0x30000000L
     if(section->ca_store) {
         if(!SSL_CTX_load_verify_store(section->ctx, section->ca_store)) {
-            sslerror("SSL_CTX_load_verify_store");
+            ssl_error(NULL, "SSL_CTX_load_verify_store");
         }
     }
 #endif /* OPENSSL_VERSION_NUMBER>=0x30000000L */
@@ -175,12 +175,12 @@ NOEXPORT int load_file_lookup(X509_STORE *store, char *name) {
 
     lookup=X509_STORE_add_lookup(store, X509_LOOKUP_file());
     if(!lookup) {
-        sslerror("X509_STORE_add_lookup(X509_LOOKUP_file)");
+        ssl_error(NULL, "X509_STORE_add_lookup(X509_LOOKUP_file)");
         return 1; /* FAILED */
     }
     if(!X509_load_crl_file(lookup, name, X509_FILETYPE_PEM)) {
         s_log(LOG_ERR, "Failed to load %s revocation lookup file", name);
-        sslerror("X509_load_crl_file");
+        ssl_error(NULL, "X509_load_crl_file");
         return 1; /* FAILED */
     }
     s_log(LOG_DEBUG, "Loaded %s revocation lookup file", name);
@@ -192,12 +192,12 @@ NOEXPORT int add_dir_lookup(X509_STORE *store, char *name) {
 
     lookup=X509_STORE_add_lookup(store, X509_LOOKUP_hash_dir());
     if(!lookup) {
-        sslerror("X509_STORE_add_lookup(X509_LOOKUP_hash_dir)");
+        ssl_error(NULL, "X509_STORE_add_lookup(X509_LOOKUP_hash_dir)");
         return 1; /* FAILED */
     }
     if(!X509_LOOKUP_add_dir(lookup, name, X509_FILETYPE_PEM)) {
         s_log(LOG_ERR, "Failed to add %s revocation lookup directory", name);
-        sslerror("X509_LOOKUP_add_dir");
+        ssl_error(NULL, "X509_LOOKUP_add_dir");
         return 1; /* FAILED */
     }
     s_log(LOG_DEBUG, "Added %s revocation lookup directory", name);
@@ -263,7 +263,7 @@ NOEXPORT int verify_callback(int preverify_ok, X509_STORE_CTX *callback_ctx) {
             return 0; /* reject */
         if(!SSL_SESSION_set_ex_data(sess,
                 index_session_authenticated, NULL)) {
-            sslerror("SSL_SESSION_set_ex_data");
+            ssl_error(c, "SSL_SESSION_set_ex_data");
             SSL_SESSION_free(sess);
             return 0; /* reject */
         }
@@ -444,8 +444,8 @@ NOEXPORT int cert_check_local(X509_STORE_CTX *callback_ctx) {
 #endif /* OPENSSL_VERSION_NUMBER>=0x10000000L */
 
 NOEXPORT int compare_pubkeys(X509 *c1, X509 *c2) {
-    ASN1_BIT_STRING *k1=X509_get0_pubkey_bitstr(c1);
-    ASN1_BIT_STRING *k2=X509_get0_pubkey_bitstr(c2);
+    const ASN1_BIT_STRING *k1=X509_get0_pubkey_bitstr(c1);
+    const ASN1_BIT_STRING *k2=X509_get0_pubkey_bitstr(c2);
     if(!k1 || !k2 || k1->length!=k2->length || k1->length<0 ||
             safe_memcmp(k1->data, k2->data, (size_t)k1->length))
         return 0; /* reject */
@@ -465,7 +465,7 @@ X509 *engine_get_cert(ENGINE *engine, const char *id) {
     params.cert=NULL;
     ENGINE_ctrl_cmd(engine, "LOAD_CERT_CTRL", 0, &params, NULL, 1);
     if(!params.cert)
-        sslerror("ENGINE_ctrl_cmd");
+        ssl_error(NULL, "ENGINE_ctrl_cmd");
     return params.cert;
 }
 

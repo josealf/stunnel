@@ -578,6 +578,8 @@ I<verifyPeer> options.
 
 ECDH curves separated with ':'
 
+Note: This option is supported for server mode sockets only.
+
 Only a single curve name is allowed for OpenSSL older than 1.1.1.
 
 To get a list of supported curves use:

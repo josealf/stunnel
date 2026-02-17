@@ -183,7 +183,7 @@ int context_init(SERVICE_OPTIONS *section) { /* init TLS context */
         section->client_method : section->server_method);
 #endif
     if(!section->ctx) {
-        sslerror("SSL_CTX_new");
+        ssl_error(NULL, "SSL_CTX_new");
         return 1; /* FAILED */
     }
 
@@ -207,7 +207,7 @@ int context_init(SERVICE_OPTIONS *section) { /* init TLS context */
 
     /* allow callbacks to access their SERVICE_OPTIONS structure */
     if(!SSL_CTX_set_ex_data(section->ctx, index_ssl_ctx_opt, section)) {
-        sslerror("SSL_CTX_set_ex_data");
+        ssl_error(NULL, "SSL_CTX_set_ex_data");
         return 1; /* FAILED */
     }
     current_section=section; /* setup current section for callbacks */
@@ -234,7 +234,7 @@ int context_init(SERVICE_OPTIONS *section) { /* init TLS context */
     if(section->cipher_list) {
         s_log(LOG_DEBUG, "Ciphers: %s", section->cipher_list);
         if(!SSL_CTX_set_cipher_list(section->ctx, section->cipher_list)) {
-            sslerror("SSL_CTX_set_cipher_list");
+            ssl_error(NULL, "SSL_CTX_set_cipher_list");
             return 1; /* FAILED */
         }
     }
@@ -247,7 +247,7 @@ int context_init(SERVICE_OPTIONS *section) { /* init TLS context */
 
         tmp_cipher_list=sk_SSL_CIPHER_dup(SSL_CTX_get_ciphers(section->ctx));
         if(!SSL_CTX_set_ciphersuites(section->ctx, section->ciphersuites)) {
-            sslerror("SSL_CTX_set_ciphersuites");
+            ssl_error(NULL, "SSL_CTX_set_ciphersuites");
             return 1; /* FAILED */
         }
         cipher_list=SSL_CTX_get_ciphers(section->ctx);
@@ -331,13 +331,13 @@ int context_init(SERVICE_OPTIONS *section) { /* init TLS context */
 #ifndef OPENSSL_NO_TLS1_3
         /* suppress all tickets (stateful and stateless) in TLSv1.3 */
         if(!section->option.session_resume && !SSL_CTX_set_num_tickets(section->ctx, 0)) {
-            sslerror("SSL_CTX_set_num_tickets");
+            ssl_error(NULL, "SSL_CTX_set_num_tickets");
             return 1; /* FAILED */
         }
 #endif /* TLS 1.3 */
         if(!SSL_CTX_set_session_id_context(section->ctx,
                 (unsigned char *)section->servname, servname_len)) {
-            sslerror("SSL_CTX_set_session_id_context");
+            ssl_error(NULL, "SSL_CTX_set_session_id_context");
             return 1; /* FAILED */
         }
     }
@@ -591,7 +591,7 @@ NOEXPORT DH *dh_read(char *cert) {
     }
     bio=BIO_new_file(cert, "r");
     if(!bio) {
-        sslerror("BIO_new_file");
+        ssl_error(NULL, "BIO_new_file");
         return NULL; /* FAILED */
     }
     dh=PEM_read_bio_DHparams(bio, NULL, NULL, NULL);
@@ -626,11 +626,11 @@ NOEXPORT int SSL_CTX_set1_groups_list(SSL_CTX *ctx, char *list) {
     }
     ecdh=EC_KEY_new_by_curve_name(nid);
     if(!ecdh) {
-        sslerror("EC_KEY_new_by_curve_name");
+        ssl_error(NULL, "EC_KEY_new_by_curve_name");
         return 0; /* FAILED */
     }
     if(!SSL_CTX_set_tmp_ecdh(ctx, ecdh)) {
-        sslerror("SSL_CTX_set_tmp_ecdhSSL_CTX_set_tmp_ecdh");
+        ssl_error(NULL, "SSL_CTX_set_tmp_ecdhSSL_CTX_set_tmp_ecdh");
         EC_KEY_free(ecdh);
         return 0; /* FAILED */
     }
@@ -663,7 +663,7 @@ NOEXPORT int conf_init(SERVICE_OPTIONS *section) {
         return 0; /* OK */
     cctx=SSL_CONF_CTX_new();
     if(!cctx) {
-        sslerror("SSL_CONF_CTX_new");
+        ssl_error(NULL, "SSL_CONF_CTX_new");
         return 1; /* FAILED */
     }
     SSL_CONF_CTX_set_ssl_ctx(cctx, section->ctx);
@@ -697,7 +697,7 @@ NOEXPORT int conf_init(SERVICE_OPTIONS *section) {
             SSL_CONF_CTX_free(cctx);
             return 1; /* FAILED */
         default:
-            sslerror("SSL_CONF_cmd");
+            ssl_error(NULL, "SSL_CONF_cmd");
             str_free(cmd);
             SSL_CONF_CTX_free(cctx);
             return 1; /* FAILED */
@@ -706,7 +706,7 @@ NOEXPORT int conf_init(SERVICE_OPTIONS *section) {
     }
 
     if(!SSL_CONF_CTX_finish(cctx)) {
-        sslerror("SSL_CONF_CTX_finish");
+        ssl_error(NULL, "SSL_CONF_CTX_finish");
         SSL_CONF_CTX_free(cctx);
         return 1; /* FAILED */
     }
@@ -792,7 +792,7 @@ NOEXPORT int auth_init(SERVICE_OPTIONS *section) {
 
     /* validate the private key against the certificate */
     if(!SSL_CTX_check_private_key(section->ctx)) {
-        sslerror("Private key does not match the certificate");
+        ssl_error(NULL, "Private key does not match the certificate");
         return 1; /* FAILED */
     }
     s_log(LOG_DEBUG, "Private key check succeeded");
@@ -928,12 +928,12 @@ NOEXPORT int load_pkcs12_file(SERVICE_OPTIONS *section, const char *file,
 
     bio=BIO_new_file(file, "rb");
     if(!bio) {
-        sslerror("BIO_new_file");
+        ssl_error(NULL, "BIO_new_file");
         return 1; /* FAILED */
     }
     p12=d2i_PKCS12_bio(bio, NULL);
     if(!p12) {
-        sslerror("d2i_PKCS12_bio");
+        ssl_error(NULL, "d2i_PKCS12_bio");
         BIO_free(bio);
         return 1; /* FAILED */
     }
@@ -962,7 +962,7 @@ NOEXPORT int load_pkcs12_file(SERVICE_OPTIONS *section, const char *file,
         success=PKCS12_parse(p12, pass, &pkey, &cert, &ca);
     }
     if(!success) {
-        sslerror("PKCS12_parse");
+        ssl_error(NULL, "PKCS12_parse");
         PKCS12_free(p12);
         return 1; /* FAILED */
     }
@@ -970,18 +970,18 @@ NOEXPORT int load_pkcs12_file(SERVICE_OPTIONS *section, const char *file,
     PKCS12_free(p12);
 
     if(!SSL_CTX_use_certificate(section->ctx, cert)) {
-        sslerror("SSL_CTX_use_certificate");
+        ssl_error(NULL, "SSL_CTX_use_certificate");
         return 1; /* FAILED */
     }
     *cert_needed = 0;
     if(!SSL_CTX_use_PrivateKey(section->ctx, pkey)) {
-        sslerror("SSL_CTX_use_PrivateKey");
+        ssl_error(NULL, "SSL_CTX_use_PrivateKey");
         return 1; /* FAILED */
     }
     *key_needed = 0;
 #if OPENSSL_VERSION_NUMBER>=0x10002000L
     if(!SSL_CTX_set0_chain(section->ctx, ca)) {
-        sslerror("SSL_CTX_set0_chain");
+        ssl_error(NULL, "SSL_CTX_set0_chain");
         return 1; /* FAILED */
     }
 #else /* OPENSSL_VERSION_NUMBER>=0x10002000L */
@@ -1008,7 +1008,7 @@ NOEXPORT int load_cert_file(SERVICE_OPTIONS *section, const char *file, int *cer
          * clear any existing chain associated with the current certificate of
          * ctx, and add the other certs to the store of chain certificates */
         if(!SSL_CTX_use_certificate_chain_file(section->ctx, file)) {
-            sslerror("SSL_CTX_use_certificate_chain_file");
+            ssl_error(NULL, "SSL_CTX_use_certificate_chain_file");
             return 1; /* FAILED */
         }
         *cert_needed = 0;
@@ -1021,25 +1021,25 @@ NOEXPORT int load_cert_file(SERVICE_OPTIONS *section, const char *file, int *cer
         s_log(LOG_DEBUG, "Loading certificate chain from file: %s", file);
         bio=BIO_new_file(file, "rb");
         if(!bio) {
-            sslerror("BIO_new_file");
+            ssl_error(NULL, "BIO_new_file");
             return 1; /* FAILED */
         }
         ca=X509_new();
         if(!ca) {
-            sslerror("X509_new");
+            ssl_error(NULL, "X509_new");
             BIO_free(bio);
             return 1; /* FAILED */
         }
         if(!PEM_read_bio_X509(bio, &ca, NULL, NULL)) {
             X509_free(ca);
             BIO_free(bio);
-            sslerror("PEM_read_bio_X509");
+            ssl_error(NULL, "PEM_read_bio_X509");
             return 1; /* FAILED */
         }
         BIO_free(bio);
         if(!SSL_CTX_add1_chain_cert(section->ctx, ca)) {
             X509_free(ca);
-            sslerror("SSL_CTX_add1_chain_cert");
+            ssl_error(NULL, "SSL_CTX_add1_chain_cert");
             return 1; /* FAILED */
         }
         X509_free(ca);
@@ -1081,7 +1081,7 @@ NOEXPORT int load_key_file(SERVICE_OPTIONS *section, const char *file, int *key_
             SSL_FILETYPE_PEM);
     }
     if(!success) {
-        sslerror("SSL_CTX_use_PrivateKey_file");
+        ssl_error(NULL, "SSL_CTX_use_PrivateKey_file");
         return 1; /* FAILED */
     }
     *key_needed = 0;
@@ -1104,7 +1104,7 @@ NOEXPORT int load_cert_engine(SERVICE_OPTIONS *section, const char *file, int *c
     if(!cert)
         return 1; /* FAILED */
     if(!SSL_CTX_use_certificate(section->ctx, cert)) {
-        sslerror("SSL_CTX_use_certificate");
+        ssl_error(NULL, "SSL_CTX_use_certificate");
         X509_free(cert);
         return 1; /* FAILED */
     }
@@ -1193,7 +1193,7 @@ UI_METHOD *ui_stunnel(void) {
         return ui_method;
     ui_method=UI_create_method("stunnel UI");
     if(!ui_method) {
-        sslerror("UI_create_method");
+        ssl_error(NULL, "UI_create_method");
         return NULL;
     }
 #if OPENSSL_VERSION_NUMBER>=0x10000000L
@@ -1230,12 +1230,12 @@ NOEXPORT int load_key_engine(SERVICE_OPTIONS *section, const char *file, int *ke
                 s_log(LOG_ERR, "Wrong PIN: retrying");
                 continue;
             }
-            sslerror("ENGINE_load_private_key");
+            ssl_error(NULL, "ENGINE_load_private_key");
             return 1; /* FAILED */
         }
         if(SSL_CTX_use_PrivateKey(section->ctx, pkey))
             break; /* success */
-        sslerror("SSL_CTX_use_PrivateKey");
+        ssl_error(NULL, "SSL_CTX_use_PrivateKey");
         return 1; /* FAILED */
     }
     s_log(LOG_INFO, "Private key initialized on engine ID: %s", file);
@@ -1289,7 +1289,7 @@ NOEXPORT int load_objects_from_store(SSL_CTX *ctx, const char *uri,
                     if(key_needed && *key_needed) { /* found the first private key */
                         if(!SSL_CTX_use_PrivateKey(ctx,
                                 OSSL_STORE_INFO_get0_PKEY(object))) {
-                            sslerror("SSL_CTX_use_PrivateKey");
+                            ssl_error(NULL, "SSL_CTX_use_PrivateKey");
                             OSSL_STORE_INFO_free(object);
                             OSSL_STORE_close(store_ctx);
                             return 0; /* FAILED */
@@ -1303,7 +1303,7 @@ NOEXPORT int load_objects_from_store(SSL_CTX *ctx, const char *uri,
                     if(cert_needed && *cert_needed) { /* found the first certificate */
                         if(!SSL_CTX_use_certificate(ctx,
                                 OSSL_STORE_INFO_get0_CERT(object))) {
-                            sslerror("SSL_CTX_use_certificate");
+                            ssl_error(NULL, "SSL_CTX_use_certificate");
                             OSSL_STORE_INFO_free(object);
                             OSSL_STORE_close(store_ctx);
                             return 0; /* FAILED */
@@ -1314,7 +1314,7 @@ NOEXPORT int load_objects_from_store(SSL_CTX *ctx, const char *uri,
                         /* add it to the certificate chain */
                         if(!SSL_CTX_add1_chain_cert(ctx,
                                 OSSL_STORE_INFO_get0_CERT(object))) {
-                            sslerror("SSL_CTX_add1_chain_cert");
+                            ssl_error(NULL, "SSL_CTX_add1_chain_cert");
                             OSSL_STORE_INFO_free(object);
                             OSSL_STORE_close(store_ctx);
                             return 0; /* FAILED */
@@ -1598,7 +1598,7 @@ NOEXPORT int decrypt_session_ticket_cb(SSL *ssl, SSL_SESSION *sess,
             str_free(old_addr); /* NULL pointers are ignored */
         } else { /* failed to store ticket_data->addr */
             CRYPTO_THREAD_unlock(stunnel_locks[LOCK_ADDR]);
-            sslerror("SSL_SESSION_set_ex_data");
+            ssl_error(c, "SSL_SESSION_set_ex_data");
         }
     } else {
         s_log(LOG_INFO, "Decrypted ticket did not include a persistence address");
@@ -2116,7 +2116,7 @@ NOEXPORT void info_callback(const SSL *ssl, int where, int ret) {
 
 /**************************************** TLS error reporting */
 
-void sslerror(const char *txt) { /* OpenSSL error handler */
+void ssl_error(CLI *c, const char *txt) { /* OpenSSL error handler */
     char *errors[MAX_ERRORS];
     char *error_string;
     int i;
@@ -2139,13 +2139,15 @@ void sslerror(const char *txt) { /* OpenSSL error handler */
         }
 
         ERR_error_string_n(err, error_string, MAX_ERROR_LEN);
-        errors[i]=str_printf("%s: %s%s%s:%d: %s%s%s",
+        errors[i]=str_printf("%s: %s%s%s:%d: %s%s%s%s%s",
             txt && i==0 ? txt : "error queue",
             func && *func ? func : "",
             func && *func ? "@" : "",
             file, line, error_string,
             flags&ERR_TXT_STRING && data && *data ? ": " : "",
-            flags&ERR_TXT_STRING && data && *data ? data : "");
+            flags&ERR_TXT_STRING && data && *data ? data : "",
+            c && c->accepted_address && i==0 ? ": client " : "",
+            c && c->accepted_address && i==0 ? c->accepted_address : "");
     }
     str_free(error_string);
     ERR_clear_error();

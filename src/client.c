@@ -544,19 +544,19 @@ NOEXPORT void ssl_start(CLI *c) {
 
     c->ssl=SSL_new(c->opt->ctx);
     if(!c->ssl) {
-        sslerror("SSL_new");
+        ssl_error(c, "SSL_new");
         throw_exception(c, 1);
     }
     /* for callbacks */
     if(!SSL_set_ex_data(c->ssl, index_ssl_cli, c)) {
-        sslerror("SSL_set_ex_data");
+        ssl_error(c, "SSL_set_ex_data");
         throw_exception(c, 1);
     }
     if(c->opt->option.client) {
 #ifndef OPENSSL_NO_TLSEXT
 #ifndef OPENSSL_NO_OCSP
         if(!SSL_set_tlsext_status_type(c->ssl, TLSEXT_STATUSTYPE_ocsp)) {
-            sslerror("OCSP: SSL_set_tlsext_status_type");
+            ssl_error(c, "OCSP: SSL_set_tlsext_status_type");
             throw_exception(c, 1);
         }
 #endif /* !defined(OPENSSL_NO_OCSP) */
@@ -566,7 +566,7 @@ NOEXPORT void ssl_start(CLI *c) {
         if(c->opt->sni && *c->opt->sni) {
             s_log(LOG_INFO, "SNI: sending servername: %s", c->opt->sni);
             if(!SSL_set_tlsext_host_name(c->ssl, c->opt->sni)) {
-                sslerror("SSL_set_tlsext_host_name");
+                ssl_error(c, "SSL_set_tlsext_host_name");
                 throw_exception(c, 1);
             }
         } else { /* c->opt->sni was set to an empty value */
@@ -652,7 +652,7 @@ NOEXPORT void ssl_start(CLI *c) {
             sockerror(c->opt->option.client ? "SSL_connect" : "SSL_accept");
             throw_exception(c, 1);
         }
-        sslerror(c->opt->option.client ? "SSL_connect" : "SSL_accept");
+        ssl_error(c, c->opt->option.client ? "SSL_connect" : "SSL_accept");
         throw_exception(c, 1);
     }
     ERR_clear_error(); /* silence any cached errors */
@@ -665,7 +665,7 @@ NOEXPORT void ssl_start(CLI *c) {
         } else { /* no authentication was performed */
             if(!SSL_SESSION_set_ex_data(sess,
                     index_session_authenticated, NULL)) {
-                sslerror("SSL_SESSION_set_ex_data");
+                ssl_error(c, "SSL_SESSION_set_ex_data");
                 SSL_SESSION_free(sess);
                 throw_exception(c, 1);
             }
@@ -1013,7 +1013,7 @@ NOEXPORT void transfer(CLI *c) {
                 shutdown_wants_write=0;
                 break;
             case SSL_ERROR_SSL: /* TLS error */
-                sslerror("SSL_shutdown");
+                ssl_error(c, "SSL_shutdown");
                 throw_exception(c, 1);
             case SSL_ERROR_ZERO_RETURN: /* received a close_notify alert */
                 SSL_set_shutdown(c->ssl, SSL_SENT_SHUTDOWN|SSL_RECEIVED_SHUTDOWN);
@@ -1111,7 +1111,7 @@ NOEXPORT void transfer(CLI *c) {
                     "SSL_write returned WANT_X509_LOOKUP: retrying");
                 break;
             case SSL_ERROR_SSL:
-                sslerror("SSL_write");
+                ssl_error(c, "SSL_write");
                 throw_exception(c, 1);
             case SSL_ERROR_ZERO_RETURN: /* a buffered close_notify alert */
                 /* fall through */
@@ -1185,7 +1185,7 @@ NOEXPORT void transfer(CLI *c) {
                     break;
                 }
 #endif /* SSL_R_UNEXPECTED_EOF_WHILE_READING */
-                sslerror("SSL_read");
+                ssl_error(c, "SSL_read");
                 throw_exception(c, 1);
             case SSL_ERROR_ZERO_RETURN: /* received a close_notify alert */
                 s_log(LOG_INFO, "TLS closed (SSL_read)");
@@ -1396,7 +1396,7 @@ NOEXPORT void auth_user(CLI *c) {
     while(*user==' ') /* skip leading spaces */
         ++user;
     if(strcmp(user, c->opt->username)) {
-        s_log(LOG_WARNING, "Connection from %s REFUSED by IDENT (user \"%s\")",
+        s_log(LOG_ERR, "Connection from %s REFUSED by IDENT (user \"%s\")",
             c->accepted_address, user);
         str_free(line);
         throw_exception(c, 1);
@@ -1639,7 +1639,7 @@ NOEXPORT void idx_cache_save(SSL_SESSION *sess, SOCKADDR_UNION *cur_addr) {
     if(ok) {
         str_free(old_addr); /* NULL pointers are ignored */
     } else { /* failed to store new_addr -> remove it */
-        sslerror("SSL_SESSION_set_ex_data");
+        ssl_error(NULL, "SSL_SESSION_set_ex_data");
         str_free(new_addr); /* NULL pointers are ignored */
     }
 }

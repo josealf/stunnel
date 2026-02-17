@@ -624,6 +624,8 @@
 
 <p>krzywe ECDH odddzielone &#39;:&#39;</p>
 
+<p>Uwaga: ta opcja wpływa tylko na gniazda w trybie serwera.</p>
+
 <p>Wersje OpenSSL starsze ni&#x17C; 1.1.1 pozwalaj&#x105; na u&#x17C;ycie tylko jednej krzywej.</p>
 
 <p>List&#x119; dost&#x119;pnych krzywych mo&#x17C;na uzyska&#x107; poleceniem:</p>

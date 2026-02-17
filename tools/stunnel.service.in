@@ -7,6 +7,7 @@ LimitNOFILE=20480
 ExecStart=@bindir@/stunnel
 ExecReload=/bin/kill -HUP $MAINPID
 Type=forking
+PrivateTmp=true
 
 [Install]
 WantedBy=multi-user.target

@@ -1,6 +1,6 @@
 /*
  *   stunnel       TLS offloading and load-balancing proxy
- *   Copyright (C) 1998-2025 Michal Trojnara <Michal.Trojnara@stunnel.org>
+ *   Copyright (C) 1998-2026 Michal Trojnara <Michal.Trojnara@stunnel.org>
  *
  *   This program is free software; you can redistribute it and/or modify it
  *   under the terms of the GNU General Public License as published by the
@@ -108,7 +108,7 @@ typedef __int64             ssize_t;
 typedef int                 ssize_t;
 #endif /* _WIN64 */
 #endif /* !__MINGW32__ */
-#define USE_IPv6
+#define USE_IPV6
 #define _CRT_SECURE_NO_DEPRECATE
 #define _CRT_NONSTDC_NO_DEPRECATE
 #define _CRT_NON_CONFORMING_SWPRINTFS
@@ -426,26 +426,18 @@ extern char *sys_errlist[];
 
 /**************************************** OpenSSL headers */
 
-/* TODO: remove this after migrating to the OpenSSL 3.0 API */
-#define OPENSSL_SUPPRESS_DEPRECATED
-
 #define OPENSSL_THREAD_DEFINES
 #include <openssl/opensslconf.h>
 /* opensslv.h requires prior opensslconf.h to include -fips in version string */
 #include <openssl/opensslv.h>
 
-#if OPENSSL_VERSION_NUMBER<0x0090700fL
-#error OpenSSL 0.9.7 or later is required
-#endif /* OpenSSL older than 0.9.7 */
+#if OPENSSL_VERSION_NUMBER<0x0090800fL
+#error OpenSSL 0.9.8 or later is required
+#endif /* OpenSSL older than 0.9.8 */
 
 #if defined(USE_PTHREAD) && !defined(OPENSSL_THREADS)
 #error OpenSSL library compiled without thread support
 #endif /* !OPENSSL_THREADS && USE_PTHREAD */
-
-#if OPENSSL_VERSION_NUMBER<0x0090800fL
-#define OPENSSL_NO_ECDH
-#define OPENSSL_NO_COMP
-#endif /* OpenSSL older than 0.9.8 */
 
 /* non-blocking OCSP API is not available before OpenSSL 0.9.8h */
 #if OPENSSL_VERSION_NUMBER<0x00908080L
@@ -500,9 +492,6 @@ extern char *sys_errlist[];
 #include <openssl/des.h>
 #ifndef OPENSSL_NO_DH
 #include <openssl/dh.h>
-#if OPENSSL_VERSION_NUMBER<0x10100000L
-int DH_set0_pqg(DH *dh, BIGNUM *p, BIGNUM *q, BIGNUM *g);
-#endif /* OPENSSL_VERSION_NUMBER<0x10100000L */
 #endif /* !defined(OPENSSL_NO_DH) */
 #ifndef OPENSSL_NO_ENGINE
 #include <openssl/engine.h>
